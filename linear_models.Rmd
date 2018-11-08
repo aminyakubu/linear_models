@@ -98,19 +98,100 @@ nyc_airbnb %>%
   ggplot(aes(x = stars, y = pred, color = boro)) + geom_point()
 ```
 
+### Testing
+
+```{r}
+fit %>% broom::tidy()
+```
+
+Compare nested models - ANOVA is for testing NESTED MODELS only!
+
+```{r}
+fit_null = lm(price ~ stars + boro, data = nyc_airbnb)
+
+fit_alt = lm(price ~ stars + boro + room_type, data = nyc_airbnb)
+
+anova(fit_null, fit_alt) %>% 
+  broom::tidy()
+```
+
+### Nest data
+
+```{r}
+nyc_airbnb %>% 
+  lm(price ~ stars * boro + room_type * boro, data = .) %>% 
+  broom::tidy() %>% 
+  knitr::kable(digits = 3)
+```
+
+Nesting and fitting
+
+```{r}
+nest_lm_res =
+  nyc_airbnb %>% 
+  group_by(boro) %>% 
+  nest() %>% 
+  mutate(models = map(data, ~lm(price ~ stars + room_type, data = .x)),
+         models = map(models, broom::tidy)) %>% 
+  select(-data) %>% 
+  unnest()
+```
+
+Let's go nuts!
+
+```{r}
+manhattan_airbnb =
+  nyc_airbnb %>% 
+  filter(boro == "Manhattan")
+
+manhattan_nest_lm_res =
+  manhattan_airbnb %>% 
+  group_by(neighborhood) %>% 
+  nest() %>% 
+  mutate(models = map(data, ~lm(price ~ stars + room_type, data = .x)),
+         models = map(models, broom::tidy)) %>% 
+  select(-data) %>% 
+  unnest()
+```
+
+View som results...
+
+```{r}
+manhattan_nest_lm_res  %>% 
+  filter(str_detect(term, "room_type")) %>% 
+  ggplot(aes(x = neighborhood, y = estimate)) + geom_point() + facet_grid(~ term) +  
+  theme(axis.text.x = element_text(angle = 80, hjust = 1))
+```
+
+### Binary outcome
+
+```{r}
+baltimore_df = 
+  read_csv("data/homicide-data.csv") %>% 
+  filter(city == "Baltimore") %>% 
+  mutate(resolved = as.numeric(disposition == "Closed by arrest"),
+         victim_age = as.numeric(victim_age),
+         victim_race = fct_relevel(victim_race, "White")) %>% 
+  select(resolved, victim_age, victim_race, victim_sex)
+```
 
 
+```{r}
+fit_logistic = glm(resolved ~ victim_age + victim_race, data = baltimore_df, family = binomial())
+```
 
 
+```{r}
+fit_logistic %>% 
+  broom::tidy() %>% 
+  mutate(OR = boot::inv.logit(estimate)) %>% 
+  knitr::kable(digits = 3)
+```
 
-
-
-
-
-
-
-
-
+```{r}
+baltimore_df %>% 
+  ggplot(aes(x = victim_age, y = resolved)) + geom_point() + geom_smooth()
+```
 
 
 
