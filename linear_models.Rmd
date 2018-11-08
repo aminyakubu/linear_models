@@ -1,0 +1,156 @@
+---
+title: "Untitled"
+author: "Amin Yakubu"
+date: "11/8/2018"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(p8105.datasets)
+
+set.seed(1)
+
+```
+
+```{r}
+data("nyc_airbnb")
+
+nyc_airbnb = 
+  nyc_airbnb %>% 
+  mutate(stars = review_scores_location / 2) %>% 
+  rename(boro = neighbourhood_group,
+         neighborhood = neighbourhood) %>% 
+  filter(boro != "Staten Island") %>% 
+  select(price, stars, boro, neighborhood, room_type)
+```
+
+Fit a model for price as an outcome
+
+```{r}
+fit = lm(price ~ stars + boro, data = nyc_airbnb)
+```
+
+Loot at some summaries
+
+```{r}
+summary(fit)
+summary(fit)$coef
+coef(fit)
+fitted.values(fit)
+```
+
+Better summary options
+
+```{r}
+broom::tidy(fit)
+```
+
+```{r}
+fit %>% 
+  broom::tidy() %>% 
+  select(term, estimate, p.value) %>% 
+  mutate(term = str_replace(term, "^boro", "Boro: ")) %>% 
+  knitr::kable(digits = 3)
+```
+
+Other summary options
+
+```{r}
+fit %>% 
+  broom::glance()
+```
+
+We have to be careful about factors
+
+```{r}
+nyc_airbnb = 
+  nyc_airbnb %>% 
+  mutate(boro = fct_infreq(boro),
+         room_type = fct_infreq(room_type))
+
+fit = lm(price ~ stars + boro, data = nyc_airbnb)
+
+fit %>% 
+  broom::tidy()
+```
+
+### Diagnostics
+
+```{r}
+
+modelr::add_residuals(nyc_airbnb, fit) %>% 
+  ggplot(aes(x = boro, y = resid)) + geom_boxplot()
+
+modelr::add_residuals(nyc_airbnb, fit) %>% 
+  ggplot(aes(x = stars, y = resid)) + geom_point()
+
+nyc_airbnb %>% 
+  modelr::add_residuals(fit) %>% 
+  ggplot(aes(x = stars, y = resid)) + geom_point()
+
+nyc_airbnb %>% 
+  modelr::add_predictions(fit) %>% 
+  ggplot(aes(x = stars, y = pred, color = boro)) + geom_point()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
