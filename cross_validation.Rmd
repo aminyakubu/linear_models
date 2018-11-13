@@ -1,0 +1,107 @@
+---
+title: "Cross Validation"
+author: "Amin Yakubu"
+date: "11/13/2018"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+library(tidyverse)
+library(modelr)
+library(mgcv)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+Cross validation by hand
+
+```{r}
+nonlin_df = tibble(
+  id = 1:100,
+  x = runif(100, 0, 1),
+  y = 1 - 10 * (x - .3) ^ 2 + rnorm(100, 0, .3)
+)
+
+ggplot(nonlin_df, aes(x = x, y = y)) + geom_point() + theme_bw()
+```
+
+Partition into training and testing
+
+```{r}
+train_df = sample_n(nonlin_df, 80)
+
+test_df = anti_join(nonlin_df, train_df, by = "id")
+
+ggplot(train_df, aes(x = x, y = y)) + 
+  geom_point() + 
+  geom_point(data = test_df, color = "red")
+```
+
+Let's fit a few models! 
+
+```{r}
+lin_mod = lm(y ~ x, data = train_df)
+nonlin_mod = mgcv::gam(y ~ s(x), data = train_df)
+wiggly_mod = mgcv::gam(y ~ s(x, k = 30), sp = 10e-6, data = train_df)
+```
+
+This what these look like:
+
+```{r}
+train_df %>% 
+  add_predictions(nonlin_mod) %>% 
+  ggplot(aes(x = x, y = y)) + geom_point() + 
+  geom_line(aes(y = pred), color = "red")
+
+train_df %>% 
+  add_predictions(wiggly_mod) %>% 
+  ggplot(aes(x = x, y = y)) + geom_point() + 
+  geom_line(aes(y = pred), color = "red")
+
+train_df %>% 
+  add_predictions(lin_mod) %>% 
+  ggplot(aes(x = x, y = y)) + geom_point() + 
+  geom_line(aes(y = pred), color = "red")
+```
+
+Making all the plots together 
+
+```{r}
+train_df %>% 
+  gather_predictions(lin_mod, nonlin_mod, wiggly_mod) %>% 
+  mutate(model = fct_inorder(model)) %>% 
+  ggplot(aes(x = x, y = y)) + 
+  geom_point() + 
+  geom_line(aes(y = pred), color = "red") + 
+  facet_wrap(~model)
+```
+
+```{r}
+rmse(lin_mod, test_df)
+rmse(nonlin_mod, test_df)
+rmse(wiggly_mod, test_df)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
